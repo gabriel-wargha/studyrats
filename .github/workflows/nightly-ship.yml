@@ -59,6 +59,7 @@ jobs:
             /ship
             You are running unattended overnight, so nobody can answer questions.
             You are already on the branch ${{ steps.branch.outputs.name }}. Use it and don't create another one.
+            Start building straight away and keep going through every step of /ship. Don't stop to ask questions or wait for approval: the open questions in PLAN.md keep their defaults. End only when the pull request is marked ready, or when you are truly blocked (then follow step 9).
           claude_args: |
             --max-turns 300
             --allowedTools "Agent,Task,Read,Write,Edit,MultiEdit,Glob,Grep,LS,TodoWrite,Skill,Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(python3:*),Bash(git:*),Bash(gh pr:*),Bash(ls:*),Bash(mkdir:*),Bash(cat:*)"
