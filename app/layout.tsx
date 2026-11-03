@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Instrument_Sans } from "next/font/google";
+import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
 import "./globals.css";
 
@@ -38,7 +39,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full">
         <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col">
           <div className="flex flex-1 flex-col">{children}</div>
-          <TabBar />
+          {/* usePathname is request-time data on dynamic routes like /join/[code]. */}
+          <Suspense fallback={null}>
+            <TabBar />
+          </Suspense>
         </div>
       </body>
     </html>
