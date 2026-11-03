@@ -1,26 +1,47 @@
 @import "tailwindcss";
 
+/* StudyRats: ink-blue notebook, cheese-yellow highlights. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f3f5f8;
+  --foreground: #12203a;
+  --muted: #4b5a74;
+  --surface: #ffffff;
+  --line: #d5dbe6;
+  --ink: #12203a;
+  --cheese: #f6c445;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0c1426;
+    --foreground: #eef1f7;
+    --muted: #a3afc4;
+    --surface: #152039;
+    --line: #26344f;
+    --ink: #eef1f7;
+    --cheese: #f6c445;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-muted: var(--muted);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-cheese: var(--cheese);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+:focus-visible {
+  outline: 3px solid var(--cheese);
+  outline-offset: 2px;
 }
