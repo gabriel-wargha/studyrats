@@ -9,6 +9,7 @@ import {
   stopSessionSchema,
   updateSubjectSchema,
 } from "@/lib/schemas/sessions";
+import { deleteObject } from "@/lib/storage";
 import type { ActionResult } from "@/server/groups";
 
 type PgErrorLike = { code?: string; constraint?: string; cause?: unknown };
@@ -27,13 +28,9 @@ function invalid(error: string, zodError: ZodError): { ok: false; error: string;
   return { ok: false, error, fieldErrors: zodError.flatten().fieldErrors };
 }
 
-/**
- * HOOK FOR B10: delete the photo object from the private `photos` bucket.
- * lib/storage.ts does not exist yet. When B10 lands, replace the body with
- * `await deleteObject(key)`. Failures must not break stopping a session.
- */
+/** Deletes the photo object from the private `photos` bucket. Callers must catch failures. */
 async function deletePhotoObject(key: string): Promise<void> {
-  void key;
+  await deleteObject(key);
 }
 
 export type StartedSession = {
