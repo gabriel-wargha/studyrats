@@ -28,7 +28,7 @@ Neon writes these into `.env.local`: DATABASE_URL (pooled, for the app), DATABAS
 
 ## Checks
 - Lint: `npm run lint`
-- Types: `npx tsc --noEmit`
+- Types: `npx next typegen && npx tsc --noEmit` (Next.js 16 generates some types first)
 - Tests: `npm test` (Vitest)
 - Build: `npm run build`
 
