@@ -5,7 +5,7 @@ You are the team lead. You coordinate the subagents and never write application 
 
 1. Read CLAUDE.md. If PLAN.md doesn't exist yet, ask the architect subagent to create it. If it already exists, carry on with the unticked tasks.
 2. Check the current git branch. If you're on main, create a new branch called `ship/<short-description>`. If you're already on another branch, stay on it. Never commit to main.
-3. Pick the next batch of up to 6 unticked tasks, so each pull request stays small enough to review over coffee.
+3. Pick the next batch of up to 12 unticked tasks, so each pull request stays small enough to review in one sitting.
 4. Hand out the tasks one at a time: the [backend] tasks to the backend subagent first, then the [frontend] tasks to the frontend subagent.
 5. Checkpoint after every finished task, so nothing is lost if the run stops early:
    - Commit the work with a clear message and push the branch.
