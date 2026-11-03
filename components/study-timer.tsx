@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { startSession, stopSession, updateSubject } from "@/app/actions/sessions";
+import { PhotoPicker } from "@/components/photo-picker";
 import { FormError, fieldClass, outlineButton } from "@/components/ui";
 import { elapsedSeconds, formatClock, isPastCap } from "@/lib/clock";
 
@@ -132,8 +133,7 @@ export function StudyTimer({
           subjects={subjects}
         />
 
-        {/* F6: PhotoPicker goes here (running state). Props: sessionId={running.id}. */}
-        <div data-slot="photo-picker-running" />
+        <PhotoPicker key={running.id} sessionId={running.id} />
 
         <div className="mt-auto space-y-3">
           <FormError id={errorId} message={error} />
@@ -195,8 +195,7 @@ export function StudyTimer({
               initial={done.subject}
               subjects={subjects}
             />
-            {/* F6: PhotoPicker goes here (done state). Props: sessionId={done.sessionId}. */}
-            <div data-slot="photo-picker-done" />
+            <PhotoPicker key={done.sessionId} sessionId={done.sessionId} />
           </>
         )}
 
