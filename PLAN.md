@@ -369,3 +369,13 @@ Each task is small and has an acceptance check. "Checks pass" means `npm run lin
 - **The night shift cannot run migrations or hit a real DB.** SQL bugs only show up in human QA, so keep queries simple and review migrations in each PR.
 - **iOS PWA limits:** no install prompt, and the timer pauses when the app is in the background. The server-side `started_at` makes this harmless, because elapsed time is recomputed on resume.
 - **Cheating:** a user can leave the timer running (capped at 6 h). That's acceptable for friendly competition in v1.
+
+---
+
+## 14. Reviewer follow-ups (B7-B12 / F1-F6 review, non-blocking)
+
+- F7/F8: feed and leaderboard pages must call `requireMember(groupId)` themselves; the layout is not a guard.
+- F11: add `not-found.tsx` / `error.tsx` for group routes (non-members get a 200 with the not-found UI; no data leaks). F7: check the "See feed" link in `components/study-timer.tsx`.
+- `lib/auth/server.ts` `safeNextPath` should match `resolveNextPath` (control characters).
+- `stopSession` UPDATE then DELETE (under 1 minute) is two statements; add `minutes > 0` to feed/leaderboard filters (B14) or use a transaction.
+- B16 grep test should enforce `ctx: GroupCtx` / `userId` on `lib/queries` exports.
