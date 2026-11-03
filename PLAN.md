@@ -294,7 +294,7 @@ Each task is small and has an acceptance check. "Checks pass" means `npm run lin
 
 ### Day 1: Foundations
 
-- [ ] **B1 [backend] Tooling.** Add vitest, zod, drizzle-orm, drizzle-kit, @neondatabase/serverless, date-fns, @date-fns/tz, @aws-sdk/client-s3, @aws-sdk/s3-request-presigner, and the Neon Auth SDK. Add the `test` script, `vitest.config.ts` and `.env.example`. *Accept:* `npm test` runs (one trivial test) and checks pass.
+- [x] **B1 [backend] Tooling.** Add vitest, zod, drizzle-orm, drizzle-kit, @neondatabase/serverless, date-fns, @date-fns/tz, @aws-sdk/client-s3, @aws-sdk/s3-request-presigner, and the Neon Auth SDK. Add the `test` script, `vitest.config.ts` and `.env.example`. *Accept:* `npm test` runs (one trivial test) and checks pass.
 - [ ] **B2 [backend] Lazy env + DB client.** Add `lib/env.ts` (`requireEnv`, `MissingEnvError`), `lib/db/index.ts` (`getDb()`) and `drizzle.config.ts`. *Accept:* a test shows importing does not throw without env, and calling `getDb()` throws `MissingEnvError`.
 - [ ] **B3 [backend] Schema + first migration.** Write `lib/db/schema.ts` exactly as in section 4 (enums, checks, partial unique index, indexes). Run `drizzle-kit generate` to create `migrations/0000_*.sql`. *Accept:* the SQL contains the partial unique index and the checks, and checks pass.
 - [ ] **B4 [backend] `neon.ts`.** Declare Postgres, Auth and the private bucket `photos` with PUT CORS for localhost and the Vercel domains. *Accept:* the file type-checks. The PR description reminds the human to run `neon deploy`.
