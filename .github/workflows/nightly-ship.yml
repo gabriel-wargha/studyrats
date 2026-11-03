@@ -1,0 +1,62 @@
+# Night shift: runs your agent team on this repo every night and leaves a pull request for the morning.
+# It never touches main. Every run works on its own new branch.
+
+name: Night shift
+
+on:
+  schedule:
+    # 08:17 UTC = 1:17 a.m. in Idaho in winter, 2:17 a.m. in summer.
+    - cron: "17 8 * * *"
+  workflow_dispatch: {} # adds a "Run workflow" button in the Actions tab, for testing
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+concurrency:
+  group: night-shift
+  cancel-in-progress: false
+
+jobs:
+  ship:
+    runs-on: ubuntu-latest
+    # Stops the run after an hour. That keeps a private repo inside GitHub's
+    # 2,000 free minutes a month. If the repo is public, minutes are free and
+    # you can raise this to 120.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create tonight's branch
+        id: branch
+        run: |
+          BRANCH="night-shift/$(date -u +%Y-%m-%d)-${{ github.run_number }}"
+          git checkout -b "$BRANCH"
+          echo "name=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Run the team
+        uses: anthropics/claude-code-action@v1
+        # No database secrets here on purpose. The team builds and tests
+        # without touching your real database.
+        with:
+          # Uses your Claude plan. When you hit your plan's limit, the run simply stops.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            /ship
+            You are running unattended overnight, so nobody can answer questions.
+            You are already on the branch ${{ steps.branch.outputs.name }}. Use it and don't create another one.
+          claude_args: |
+            --max-turns 300
+            --allowedTools "Agent,Task,Read,Write,Edit,MultiEdit,Glob,Grep,LS,TodoWrite,Skill,Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(python3:*),Bash(git:*),Bash(gh pr:*),Bash(ls:*),Bash(mkdir:*),Bash(cat:*)"
