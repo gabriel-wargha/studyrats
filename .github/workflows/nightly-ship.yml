@@ -50,6 +50,13 @@ jobs:
         uses: anthropics/claude-code-action@v1
         # No database secrets here on purpose. The team builds and tests
         # without touching your real database.
+        env:
+          # Keep every agent in the foreground, so the lead waits for each one to
+          # finish. Without this, the lead sends the first agent to the background,
+          # ends its turn, and the run closes before any work is saved.
+          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
+          # Give slow commands like npm install and next build up to 10 minutes.
+          BASH_DEFAULT_TIMEOUT_MS: "600000"
         with:
           # Uses your Claude plan. When you hit your plan's limit, the run simply stops.
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -62,4 +69,4 @@ jobs:
             Start building straight away and keep going through every step of /ship. Don't stop to ask questions or wait for approval: the open questions in PLAN.md keep their defaults. End only when the pull request is marked ready, or when you are truly blocked (then follow step 9).
           claude_args: |
             --max-turns 300
-            --allowedTools "Agent,Task,Read,Write,Edit,MultiEdit,Glob,Grep,LS,TodoWrite,Skill,Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(python3:*),Bash(git:*),Bash(gh pr:*),Bash(ls:*),Bash(mkdir:*),Bash(cat:*)"
+            --allowedTools "Agent,Task,Read,Write,Edit,MultiEdit,Glob,Grep,LS,TodoWrite,Skill,Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(python3:*),Bash(git:*),Bash(gh pr:*),Bash(ls:*),Bash(mkdir:*),Bash(cat:*),Bash(cd:*),Bash(pwd:*),Bash(grep:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(sort:*),Bash(find:*),Bash(echo:*)"
