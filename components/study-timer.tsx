@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, useTransition, type FormEvent } from "react";
 import { startSession, stopSession, updateSubject } from "@/app/actions/sessions";
+import { PhotoPicker } from "@/components/photo-picker";
 import { errorClass, inputClass, primaryButton, secondaryButton } from "@/components/ui";
 import { MAX_SESSION_MINUTES } from "@/lib/points";
 
@@ -37,8 +38,21 @@ export function StudyTimer({
   subjects: string[];
 }) {
   const [done, setDone] = useState<Done | null>(null);
+  // Session ids that got a photo. Kept here because the running view remounts
+  // when the page refreshes after a photo is attached.
+  const [photoFor, setPhotoFor] = useState<string[]>([]);
+  const markPhoto = (id: string) => setPhotoFor((p) => (p.includes(id) ? p : [...p, id]));
 
-  if (done) return <DoneView done={done} onAgain={() => setDone(null)} />;
+  if (done) {
+    return (
+      <DoneView
+        done={done}
+        hasPhoto={photoFor.includes(done.sessionId)}
+        onPhoto={() => markPhoto(done.sessionId)}
+        onAgain={() => setDone(null)}
+      />
+    );
+  }
   if (active) {
     // Keyed so a new server response restarts the clock from fresh server time.
     return (
@@ -46,6 +60,8 @@ export function StudyTimer({
         key={active.id + ":" + serverNow}
         active={active}
         serverNow={serverNow}
+        hasPhoto={photoFor.includes(active.id)}
+        onPhoto={() => markPhoto(active.id)}
         onDone={setDone}
       />
     );
@@ -142,10 +158,14 @@ function IdleView({ subjects }: { subjects: string[] }) {
 function RunningView({
   active,
   serverNow,
+  hasPhoto,
+  onPhoto,
   onDone,
 }: {
   active: Active;
   serverNow: number;
+  hasPhoto: boolean;
+  onPhoto: () => void;
   onDone: (d: Done) => void;
 }) {
   const router = useRouter();
@@ -266,8 +286,9 @@ function RunningView({
         />
       </div>
 
-      {/* F6 SLOT: photo picker goes here (running state). Needs sessionId={active.id}. */}
-      <div data-slot="photo-picker-running" />
+      <div data-slot="photo-picker-running">
+        <PhotoPicker sessionId={active.id} attached={hasPhoto} onAttached={onPhoto} />
+      </div>
 
       <button type="button" onClick={onStop} disabled={pending} className={primaryButton}>
         {pending ? "Saving..." : "Stop and save"}
@@ -276,7 +297,17 @@ function RunningView({
   );
 }
 
-function DoneView({ done, onAgain }: { done: Done; onAgain: () => void }) {
+function DoneView({
+  done,
+  hasPhoto,
+  onPhoto,
+  onAgain,
+}: {
+  done: Done;
+  hasPhoto: boolean;
+  onPhoto: () => void;
+  onAgain: () => void;
+}) {
   if (done.discarded) {
     return (
       <div className="flex flex-col gap-6">
@@ -313,8 +344,9 @@ function DoneView({ done, onAgain }: { done: Done; onAgain: () => void }) {
         )}
       </section>
 
-      {/* F6 SLOT: photo picker goes here (done state: add or replace). Needs sessionId={done.sessionId}. */}
-      <div data-slot="photo-picker-done" />
+      <div data-slot="photo-picker-done">
+        <PhotoPicker sessionId={done.sessionId} attached={hasPhoto} onAttached={onPhoto} />
+      </div>
 
       <div className="flex flex-col gap-3">
         <Link href="/groups" className={primaryButton}>
