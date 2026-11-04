@@ -47,7 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${display.variable} ${body.variable} h-full antialiased`}
     >
       <body className="min-h-full">
-        <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col">
+        <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col overflow-x-clip pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
           <div className="flex flex-1 flex-col">{children}</div>
           {/* usePathname is request-time data on dynamic routes like /join/[code]. */}
           <Suspense fallback={null}>

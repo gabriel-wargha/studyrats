@@ -26,7 +26,7 @@ export function TabBar() {
       <div aria-hidden className="h-[calc(4rem+env(safe-area-inset-bottom))]" />
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)]"
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
       >
         <ul className="mx-auto flex h-16 max-w-[480px] items-stretch">
           {TABS.map(({ href, label, icon: Icon }) => {

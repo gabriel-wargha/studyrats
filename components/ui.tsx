@@ -8,7 +8,7 @@ export const fieldClass =
   "mt-1.5 block min-h-12 w-full rounded-2xl border-2 border-line bg-surface px-4 text-base text-foreground placeholder:text-muted/70 focus:border-ink";
 
 export const pageShell =
-  "flex flex-1 flex-col px-6 pb-8 pt-[max(1.5rem,env(safe-area-inset-top))]";
+  "flex flex-1 flex-col px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))]";
 
 export type GroupType = "friends" | "class";
 
