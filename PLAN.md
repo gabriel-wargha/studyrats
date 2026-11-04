@@ -322,7 +322,8 @@ Each task is small and has an acceptance check. "Checks pass" means `npm run lin
 
 ### Day 3: Feed, reactions, leaderboard
 
-- [ ] **B11 [backend] Feed query.** `getFeed(ctx, cursor?)` as in section 5, with reaction aggregates and keyset pagination. *Accept:* tests cover the cursor encode/decode and that the query builder uses `ctx.groupId`.
+- [x] **B11 [backend] Feed query.** `getFeed(ctx, cursor?)` as in section 5, with reaction aggregates and keyset pagination. *Accept:* tests cover the cursor encode/decode and that the query builder uses `ctx.groupId`.
+  - Note: lives in `server/feed.ts`. Two queries per page (sessions, then reaction counts for those ids) so the join never duplicates rows. The cursor keeps the timestamp as Postgres text, because a JS Date would cut microseconds and could skip or repeat rows. A bad cursor throws `Error("Invalid feed cursor")`; the caller (B12/route) should turn it into a 400.
 - [ ] **B12 [backend] Reactions.** `toggleReaction({ sessionId, kind })` guarded by `canSeeSession`. *Accept:* tests cover the toggle on and off, and a forbidden session failing.
 - [ ] **B13 [backend] Photo route.** `app/api/photos/[sessionId]/route.ts`: requireUser, canSeeSession, then 302 to the presigned GET URL, or a 404. *Accept:* tests cover 404 for a non-member, 404 when there is no photo, and 302 with `Cache-Control: private`.
 - [ ] **B14 [backend] Leaderboard query.** `getLeaderboard(ctx, 'week' | 'all')` using `currentWeekRange` and the joined_at rule, ranked with `lib/ranking.ts`. *Accept:* tests cover the range parameters and the zero-point members being included (ranking unit-tested).
