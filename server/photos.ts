@@ -1,9 +1,10 @@
 import { and, eq } from "drizzle-orm";
+import { canSeeSession } from "@/lib/authz";
 import { getDb } from "@/lib/db";
 import { studySessions } from "@/lib/db/schema";
 import { buildPhotoKey, isValidPhotoKey, MAX_PHOTO_BYTES } from "@/lib/photo-key";
 import { attachPhotoSchema, createPhotoUploadSchema } from "@/lib/schemas/photos";
-import { deleteObject, headObject, presignPut } from "@/lib/storage";
+import { deleteObject, headObject, presignGet, presignPut } from "@/lib/storage";
 import type { ActionResult } from "@/server/groups";
 
 async function ownedSession(userId: string, id: string) {
@@ -72,4 +73,19 @@ export async function attachPhoto(
 
   if (session.photoKey && session.photoKey !== key) await tryDelete(session.photoKey);
   return { ok: true, data: { key } };
+}
+
+/**
+ * Short-lived URL for a session's photo, or null when the viewer may not see
+ * the session or it has no photo (callers answer both with a 404).
+ */
+export async function getPhotoUrl(userId: string, sessionId: string): Promise<string | null> {
+  if (!(await canSeeSession(userId, sessionId))) return null;
+  const [row] = await getDb()
+    .select({ photoKey: studySessions.photoKey })
+    .from(studySessions)
+    .where(eq(studySessions.id, sessionId))
+    .limit(1);
+  if (!row?.photoKey) return null;
+  return presignGet(row.photoKey);
 }
