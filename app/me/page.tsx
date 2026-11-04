@@ -6,6 +6,7 @@ import { IosInstallTip } from "@/components/ios-install-tip";
 import { SignOutButton } from "@/components/sign-out-button";
 import { EmptyState, PageHeader, Skeleton, pageShell } from "@/components/ui";
 import { requireUser } from "@/lib/auth/server";
+import { getMyProfile } from "@/lib/queries/profiles";
 import { getMySessions } from "@/lib/queries/sessions";
 import { getMyStats } from "@/lib/queries/stats";
 import { displayNameFor } from "@/server/profiles";
@@ -39,11 +40,15 @@ async function MeContent() {
   await connection();
   const user = await requireUser("/me");
   // Own data only: every query is keyed by the signed-in user's id.
-  const [stats, sessions] = await Promise.all([getMyStats(user.id), getMySessions(user.id, 20)]);
+  const [stats, sessions, profile] = await Promise.all([
+    getMyStats(user.id),
+    getMySessions(user.id, 20),
+    getMyProfile(user.id),
+  ]);
 
   return (
     <>
-      <DisplayNameForm initialName={displayNameFor(user)} />
+      <DisplayNameForm initialName={profile?.displayName ?? displayNameFor(user)} />
 
       <section aria-label="My points" className="grid grid-cols-2 gap-3">
         <Stat label="This week" value={stats.weekPoints} />

@@ -382,5 +382,5 @@ Each task is small and has an acceptance check. "Checks pass" means `npm run lin
 - F11: add `not-found.tsx` / `error.tsx` for group routes (non-members get a 200 with the not-found UI; no data leaks). F7: check the "See feed" link in `components/study-timer.tsx`.
 - `lib/auth/server.ts` `safeNextPath` should match `resolveNextPath` (control characters).
 - `stopSession` UPDATE then DELETE (under 1 minute) is two statements; add `minutes > 0` to feed/leaderboard filters (B14) or use a transaction.
-- F9 backend note: `/me` has no query for the saved display name, so the form prefills from `displayNameFor(sessionUser)` (Neon Auth name or email prefix) and shows that again after a reload. Add `getMyProfile(userId)` in `lib/queries` returning `profiles.displayName`, then use it in `app/me/page.tsx`.
+- F9 backend note (RESOLVED): `getMyProfile(userId)` in `lib/queries/profiles.ts` reads `profiles.display_name` for the signed-in user, and `app/me/page.tsx` prefills the form from it. If there is no profile row yet it falls back to `displayNameFor(sessionUser)`, so a saved rename now survives a reload.
 - B16 grep test should enforce `ctx: GroupCtx` / `userId` on `lib/queries` exports.
