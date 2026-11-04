@@ -348,7 +348,7 @@ Each task is small and has an acceptance check. "Checks pass" means `npm run lin
 
 ### Day 4: PWA, hardening, ship
 
-- [ ] **B16 [backend] Env-free smoke test + authz guard test.** Import all of `lib/**` and `app/actions/**` with env cleared. Add the grep test that every `lib/queries` export takes a `GroupCtx` or `userId`. *Accept:* both tests pass.
+- [x] **B16 [backend] Env-free smoke test + authz guard test.** Import all of `lib/**` and `app/actions/**` with env cleared. Add the grep test that every `lib/queries` export takes a `GroupCtx` or `userId`. *Accept:* both tests pass.
 - [ ] **F10 [frontend] PWA.** `app/manifest.ts`, icons (192, 512, maskable), Apple meta tags, `public/sw.js`, `/offline`, and the production-only register component. *Accept:* the build passes, and the Lighthouse "installable" check passes on a preview deploy (human check).
 - [ ] **F11 [frontend] Mobile polish.** Safe-area insets, at least 44 px tap targets, loading and error boundaries (`error.tsx`, `not-found.tsx`) for group routes, and dark mode via Tailwind's `dark:`. *Accept:* checks pass, and no horizontal scroll at 360 px.
 - [ ] **B17 [backend] README + release notes.** Document the human steps in section 11 and the migration workflow. *Accept:* README updated.
@@ -383,4 +383,4 @@ Each task is small and has an acceptance check. "Checks pass" means `npm run lin
 - `lib/auth/server.ts` `safeNextPath` should match `resolveNextPath` (control characters).
 - `stopSession` UPDATE then DELETE (under 1 minute) is two statements; add `minutes > 0` to feed/leaderboard filters (B14) or use a transaction.
 - F9 backend note (RESOLVED): `getMyProfile(userId)` in `lib/queries/profiles.ts` reads `profiles.display_name` for the signed-in user, and `app/me/page.tsx` prefills the form from it. If there is no profile row yet it falls back to `displayNameFor(sessionUser)`, so a saved rename now survives a reload.
-- B16 grep test should enforce `ctx: GroupCtx` / `userId` on `lib/queries` exports.
+- B16 (DONE): `tests/smoke-imports.test.ts` imports every file in `lib/**` and `app/actions/**` with env cleared. The third-party `@neon/auth/next/server` is stubbed because it fails to resolve `next/headers` under Vitest; our own code is imported for real. `tests/queries-authz-guard.test.ts` reads `lib/queries/*.ts` and requires every exported function to take `ctx: GroupCtx` or `userId: string` first. Allow-list, with reasons in the test: `encodeCursor` and `decodeCursor` (pure helpers) and `getGroupByInviteCode` (pre-membership join preview that exposes only name, type and member count). A new exception needs a written reason.
