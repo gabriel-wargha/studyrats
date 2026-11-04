@@ -365,4 +365,5 @@ Each task is small and has an acceptance check. "Checks pass" means `npm run lin
 - **`cacheComponents` build errors:** a dynamic read outside `<Suspense>` breaks `next build`. Every frontend task must keep data reads inside Suspense boundaries.
 - **The night shift cannot run migrations or hit a real DB.** SQL bugs only show up in human QA, so keep queries simple and review migrations in each PR.
 - **iOS PWA limits:** no install prompt, and the timer pauses when the app is in the background. The server-side `started_at` makes this harmless, because elapsed time is recomputed on resume.
+- **No rate limiting on `joinGroup` or invite codes.** Codes are short, so someone could script guesses against `joinGroup` / `getGroupByInviteCode`. v1 accepts this (the preview only leaks name, type and member count). Add a per-user and per-IP limit before a public launch.
 - **Cheating:** a user can leave the timer running (capped at 6 h). That's acceptable for friendly competition in v1.

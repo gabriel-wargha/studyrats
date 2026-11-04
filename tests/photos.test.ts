@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
+import type { SQL } from "drizzle-orm";
 
 const SID = "3f2b8c1e-5d4a-4b7e-9c10-2a6d8e4f7b01";
 const OTHER_SID = "9a1b2c3d-5d4a-4b7e-9c10-2a6d8e4f7b02";
@@ -7,9 +9,21 @@ const KEY = `u/u1/s/${SID}/${FILE}`;
 
 const state = { selectRows: [] as unknown[], updateRows: [] as unknown[] };
 const calls = { update: vi.fn() };
+const wheres = { select: [] as SQL[], update: [] as SQL[] };
+const dialect = new PgDialect();
+function expectOwned(w: SQL | undefined, userId: string, sessionId: string) {
+  const q = dialect.sqlToQuery(w as SQL);
+  expect(q.sql).toContain('"user_id"');
+  expect(q.params).toContain(userId);
+  expect(q.params).toContain(sessionId);
+}
 const selectChain = () => {
   const c: Record<string, unknown> = {};
-  for (const m of ["from", "where"]) c[m] = () => c;
+  c.from = () => c;
+  c.where = (w: SQL) => {
+    wheres.select.push(w);
+    return c;
+  };
   c.limit = async () => state.selectRows;
   return c;
 };
@@ -18,7 +32,12 @@ const db = {
   update: () => ({
     set: (v: unknown) => {
       calls.update(v);
-      return { where: () => ({ returning: async () => state.updateRows }) };
+      return {
+        where: (w: SQL) => {
+          wheres.update.push(w);
+          return { returning: async () => state.updateRows };
+        },
+      };
     },
   }),
 };
@@ -37,6 +56,7 @@ import { buildPhotoKey, isValidPhotoKey } from "@/lib/photo-key";
 beforeEach(() => {
   Object.assign(state, { selectRows: [], updateRows: [] });
   calls.update.mockClear();
+  wheres.select.length = wheres.update.length = 0;
   Object.values(storage).forEach((f) => f.mockReset());
   storage.presignPut.mockResolvedValue("https://s3.example/put");
   storage.deleteObjectQuietly.mockResolvedValue(undefined);
@@ -67,6 +87,7 @@ describe("createPhotoUpload", () => {
 
   it("refuses someone else's session", async () => {
     expect(await createPhotoUpload("intruder", SID)).toEqual({ ok: false, error: "Session not found" });
+    expectOwned(wheres.select[0], "intruder", SID);
     expect(storage.presignPut).not.toHaveBeenCalled();
   });
 
@@ -76,6 +97,7 @@ describe("createPhotoUpload", () => {
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     expect(isValidPhotoKey(res.data.key, "u1", SID)).toBe(true);
+    expectOwned(wheres.select[0], "u1", SID);
     expect(res.data.url).toBe("https://s3.example/put");
     expect(storage.presignPut).toHaveBeenCalledWith(res.data.key, "image/jpeg");
   });
@@ -102,6 +124,7 @@ describe("attachPhoto", () => {
   it("refuses someone else's session", async () => {
     const res = await attachPhoto("u1", { sessionId: SID, key: KEY });
     expect(res).toEqual({ ok: false, error: "Session not found" });
+    expectOwned(wheres.select[0], "u1", SID);
     expect(storage.headObject).not.toHaveBeenCalled();
   });
 
@@ -129,6 +152,8 @@ describe("attachPhoto", () => {
     const res = await attachPhoto("u1", { sessionId: SID, key: KEY });
     expect(res).toEqual({ ok: true, data: { photoKey: KEY } });
     expect(calls.update).toHaveBeenCalledWith({ photoKey: KEY });
+    expectOwned(wheres.select[0], "u1", SID);
+    expectOwned(wheres.update[0], "u1", SID);
     expect(storage.deleteObjectQuietly).toHaveBeenCalledWith(oldKey);
   });
 

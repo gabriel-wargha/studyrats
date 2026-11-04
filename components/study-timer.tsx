@@ -54,10 +54,12 @@ export function StudyTimer({
     );
   }
   if (active) {
-    // Keyed so a new server response restarts the clock from fresh server time.
+    // Keyed on the session id only. A refresh (tab returns, revalidation after
+    // a photo) must not remount, or the photo picker would lose its upload
+    // progress and retry state. The clock re-syncs through props instead.
     return (
       <RunningView
-        key={active.id + ":" + serverNow}
+        key={active.id}
         active={active}
         serverNow={serverNow}
         hasPhoto={photoFor.includes(active.id)}
@@ -178,6 +180,12 @@ function RunningView({
   // Elapsed seconds as measured by the server when it rendered this page.
   const baseSeconds = (serverNow - active.startedAt) / 1000;
   const [seconds, setSeconds] = useState(baseSeconds);
+  // New server time arrived (refresh): re-sync right away, during render.
+  const [syncedBase, setSyncedBase] = useState(baseSeconds);
+  if (syncedBase !== baseSeconds) {
+    setSyncedBase(baseSeconds);
+    setSeconds(baseSeconds);
+  }
 
   useEffect(() => {
     // performance.now() ignores phone clock changes. Elapsed = server-measured

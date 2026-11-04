@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
+import type { SQL } from "drizzle-orm";
 
 const ID = "3f2b8c1e-5d4a-4b7e-9c10-2a6d8e4f7b01";
 
@@ -10,10 +12,24 @@ const state = {
   updateRows: [] as unknown[],
 };
 const calls = { insert: vi.fn(), update: vi.fn(), delete: vi.fn() };
+const wheres = { select: [] as SQL[], update: [] as SQL[], delete: [] as SQL[] };
+const dialect = new PgDialect();
+const compile = (w: SQL | undefined) => dialect.sqlToQuery(w as SQL);
+/** Asserts the where clause is scoped to the caller and the session id. */
+function expectOwned(w: SQL | undefined, userId: string, sessionId: string) {
+  const q = compile(w);
+  expect(q.sql).toContain('"user_id"');
+  expect(q.params).toContain(userId);
+  expect(q.params).toContain(sessionId);
+}
 
 function selectChain() {
   const c: Record<string, unknown> = {};
-  for (const m of ["from", "where", "orderBy"]) c[m] = () => c;
+  for (const m of ["from", "orderBy"]) c[m] = () => c;
+  c.where = (w: SQL) => {
+    wheres.select.push(w);
+    return c;
+  };
   c.limit = async () => state.selectRows;
   return c;
 }
@@ -33,12 +49,22 @@ const db = {
   update: () => ({
     set: (v: unknown) => {
       calls.update(v);
-      return { where: () => ({ returning: async () => state.updateRows }) };
+      return {
+        where: (w: SQL) => {
+          wheres.update.push(w);
+          return { returning: async () => state.updateRows };
+        },
+      };
     },
   }),
   delete: () => {
     calls.delete();
-    return { where: () => ({ returning: async () => state.deleteRows }) };
+    return {
+      where: (w: SQL) => {
+        wheres.delete.push(w);
+        return { returning: async () => state.deleteRows };
+      },
+    };
   },
 };
 vi.mock("@/lib/db", () => ({ getDb: () => db }));
@@ -52,7 +78,6 @@ import {
   updateSubject,
 } from "@/server/sessions";
 
-const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000 - 500);
 
 beforeEach(() => {
   Object.assign(state, {
@@ -63,6 +88,7 @@ beforeEach(() => {
     updateRows: [],
   });
   Object.values(calls).forEach((f) => f.mockClear());
+  wheres.select.length = wheres.update.length = wheres.delete.length = 0;
   deleteObjectQuietly.mockClear();
 });
 
@@ -95,54 +121,70 @@ describe("startSession", () => {
 describe("stopSession", () => {
   it("rejects a bad id", async () => {
     expect((await stopSession("u1", "nope")).ok).toBe(false);
+    expect(calls.update).not.toHaveBeenCalled();
   });
 
-  it("finds nothing for someone else's session", async () => {
-    state.selectRows = [];
+  it("scopes the single UPDATE to the caller, the session id and running sessions", async () => {
+    state.updateRows = [{ minutes: 25, rawMinutes: 25, photoKey: null }];
+    await stopSession("u1", ID);
+    expect(wheres.update).toHaveLength(1);
+    expectOwned(wheres.update[0], "u1", ID);
+    expect(compile(wheres.update[0]).sql).toContain('"ended_at" is null');
+  });
+
+  it("computes minutes, the cap and the clock in SQL", async () => {
+    state.updateRows = [{ minutes: 25, rawMinutes: 25, photoKey: null }];
+    await stopSession("u1", ID);
+    const set = calls.update.mock.calls[0][0] as { endedAt: SQL; minutes: SQL };
+    const mins = compile(set.minutes);
+    expect(mins.sql).toContain("least(floor(");
+    expect(mins.sql).toContain("now()");
+    expect(mins.params).toContain(360);
+    expect(compile(set.endedAt).sql).toContain("now()");
+  });
+
+  it("finds nothing for someone else's session (no rows updated)", async () => {
+    state.updateRows = [];
     const res = await stopSession("intruder", ID);
     expect(res).toEqual({ ok: false, error: "No running session found" });
-    expect(calls.update).not.toHaveBeenCalled();
+    expectOwned(wheres.update[0], "intruder", ID);
     expect(calls.delete).not.toHaveBeenCalled();
   });
 
-  it("deletes a session under 1 minute and reports its photo", async () => {
-    state.selectRows = [{ startedAt: new Date() }];
-    state.deleteRows = [{ photoKey: "u1/abc.jpg" }];
+  it("deletes a session under 1 minute (scoped) and its photo", async () => {
+    state.updateRows = [{ minutes: 0, rawMinutes: 0, photoKey: "u1/abc.jpg" }];
     const res = await stopSession("u1", ID);
     expect(res).toEqual({
       ok: true,
       data: { minutes: 0, capped: false, discarded: true, orphanedPhotoKey: "u1/abc.jpg" },
     });
-    expect(calls.update).not.toHaveBeenCalled();
+    expect(wheres.delete).toHaveLength(1);
+    expectOwned(wheres.delete[0], "u1", ID);
     expect(deleteObjectQuietly).toHaveBeenCalledWith("u1/abc.jpg");
   });
 
-  it("does not delete any photo for a normal stop", async () => {
-    state.selectRows = [{ startedAt: minutesAgo(5) }];
-    state.updateRows = [{ id: ID }];
+  it("does not delete anything for a normal stop", async () => {
+    state.updateRows = [{ minutes: 5, rawMinutes: 5, photoKey: "u1/abc.jpg" }];
     await stopSession("u1", ID);
+    expect(calls.delete).not.toHaveBeenCalled();
     expect(deleteObjectQuietly).not.toHaveBeenCalled();
   });
 
-  it("saves whole minutes", async () => {
-    state.selectRows = [{ startedAt: minutesAgo(25) }];
-    state.updateRows = [{ id: ID }];
+  it("returns whole minutes", async () => {
+    state.updateRows = [{ minutes: 25, rawMinutes: 25, photoKey: null }];
     const res = await stopSession("u1", ID);
     expect(res).toMatchObject({ ok: true, data: { minutes: 25, capped: false, discarded: false } });
-    expect(calls.update).toHaveBeenCalledWith(expect.objectContaining({ minutes: 25 }));
   });
 
-  it("caps at 360 minutes", async () => {
-    state.selectRows = [{ startedAt: minutesAgo(500) }];
-    state.updateRows = [{ id: ID }];
+  it("reports capped when the raw minutes exceed 360", async () => {
+    state.updateRows = [{ minutes: 360, rawMinutes: 500, photoKey: null }];
     const res = await stopSession("u1", ID);
     expect(res).toMatchObject({ ok: true, data: { minutes: 360, capped: true } });
   });
 
-  it("treats a lost race (already stopped) as not found", async () => {
-    state.selectRows = [{ startedAt: minutesAgo(5) }];
-    state.updateRows = [];
-    expect((await stopSession("u1", ID)).ok).toBe(false);
+  it("does not report capped at exactly 360", async () => {
+    state.updateRows = [{ minutes: 360, rawMinutes: 360, photoKey: null }];
+    expect(await stopSession("u1", ID)).toMatchObject({ ok: true, data: { capped: false } });
   });
 });
 
@@ -154,12 +196,14 @@ describe("updateSubject", () => {
 
   it("returns an error when the session is not the user's", async () => {
     expect(await updateSubject("u2", ID, "Math")).toEqual({ ok: false, error: "Session not found" });
+    expectOwned(wheres.update[0], "u2", ID);
   });
 
   it("updates the subject", async () => {
     state.updateRows = [{ subject: "Math" }];
     expect(await updateSubject("u1", ID, " Math ")).toEqual({ ok: true, data: { subject: "Math" } });
     expect(calls.update).toHaveBeenCalledWith({ subject: "Math" });
+    expectOwned(wheres.update[0], "u1", ID);
   });
 });
 

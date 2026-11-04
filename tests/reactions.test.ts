@@ -1,11 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
+import type { SQL } from "drizzle-orm";
 
 const SID = "3f2b8c1e-5d4a-4b7e-9c10-2a6d8e4f7b01";
 
 const state = { deleted: [] as unknown[] };
 const calls = { insert: vi.fn(), conflict: vi.fn() };
+const wheres: SQL[] = [];
+const dialect = new PgDialect();
 const db = {
-  delete: () => ({ where: () => ({ returning: async () => state.deleted }) }),
+  delete: () => ({
+    where: (w: SQL) => {
+      wheres.push(w);
+      return { returning: async () => state.deleted };
+    },
+  }),
   insert: () => ({
     values: (v: unknown) => {
       calls.insert(v);
@@ -22,6 +31,7 @@ import { toggleReaction } from "@/server/reactions";
 
 beforeEach(() => {
   state.deleted = [];
+  wheres.length = 0;
   calls.insert.mockClear();
   calls.conflict.mockClear();
   authz.canSeeSession.mockReset();
@@ -34,6 +44,9 @@ describe("toggleReaction", () => {
     expect(res).toEqual({ ok: true, data: { sessionId: SID, kind: "fire", active: true } });
     expect(calls.insert).toHaveBeenCalledWith({ sessionId: SID, userId: "u1", kind: "fire" });
     expect(authz.canSeeSession).toHaveBeenCalledWith("u1", SID);
+    const q = dialect.sqlToQuery(wheres[0]);
+    expect(q.sql).toContain('"user_id"');
+    expect(q.params).toEqual(expect.arrayContaining(["u1", SID, "fire"]));
   });
 
   it("turns it off when it already exists", async () => {

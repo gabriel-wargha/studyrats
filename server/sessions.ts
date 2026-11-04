@@ -1,8 +1,8 @@
-import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { studySessions } from "@/lib/db/schema";
-import { computeMinutes } from "@/lib/points";
+import { MAX_SESSION_MINUTES } from "@/lib/points";
 import { deleteObjectQuietly } from "@/lib/storage";
 import type { ServerResult } from "@/server/groups";
 
@@ -86,51 +86,64 @@ export type StopResult = {
   orphanedPhotoKey: string | null;
 };
 
-/** Stops the user's own running session. Someone else's id behaves as not found. */
+/**
+ * Stops the user's own running session. Someone else's id behaves as not found.
+ *
+ * The clock, the whole-minute rounding and the 360 cap all run in one SQL
+ * UPDATE ... RETURNING, so started_at and the end time come from the same
+ * database clock (mirrors computeMinutes in lib/points.ts). A result of 0
+ * minutes is then deleted, together with its photo.
+ */
 export async function stopSession(userId: string, id: unknown): Promise<ServerResult<StopResult>> {
   const parsedId = sessionIdSchema.safeParse(id);
   if (!parsedId.success) return { ok: false, error: firstError(parsedId.error) };
   const notFound = { ok: false, error: "No running session found" } as const;
 
   const db = getDb();
-  const running = and(
-    eq(studySessions.id, parsedId.data),
-    eq(studySessions.userId, userId),
-    isNull(studySessions.endedAt),
-  );
+  const rawMinutes = sql<number>`floor(extract(epoch from (${studySessions.endedAt} - ${studySessions.startedAt})) / 60)::int`;
+  const [stopped] = await db
+    .update(studySessions)
+    .set({
+      endedAt: sql`now()`,
+      minutes: sql`least(floor(extract(epoch from (now() - ${studySessions.startedAt})) / 60), ${MAX_SESSION_MINUTES})::int`,
+    })
+    .where(
+      and(
+        eq(studySessions.id, parsedId.data),
+        eq(studySessions.userId, userId),
+        isNull(studySessions.endedAt),
+      ),
+    )
+    .returning({ minutes: studySessions.minutes, rawMinutes, photoKey: studySessions.photoKey });
+  if (!stopped) return notFound;
 
-  const [session] = await db
-    .select({ startedAt: studySessions.startedAt })
-    .from(studySessions)
-    .where(running)
-    .limit(1);
-  if (!session) return notFound;
-
-  const endedAt = new Date();
-  const result = computeMinutes(session.startedAt, endedAt);
-
-  if (result.discard) {
-    const deleted = await db
+  const minutes = stopped.minutes ?? 0;
+  if (minutes < 1) {
+    // Too short to count. Only deletes the row we just closed (minutes = 0).
+    await db
       .delete(studySessions)
-      .where(running)
-      .returning({ photoKey: studySessions.photoKey });
-    if (deleted.length === 0) return notFound;
-    await deleteObjectQuietly(deleted[0].photoKey); // best effort, never throws
+      .where(
+        and(
+          eq(studySessions.id, parsedId.data),
+          eq(studySessions.userId, userId),
+          eq(studySessions.minutes, 0),
+        ),
+      );
+    await deleteObjectQuietly(stopped.photoKey); // best effort, never throws
     return {
       ok: true,
-      data: { minutes: 0, capped: false, discarded: true, orphanedPhotoKey: deleted[0].photoKey },
+      data: { minutes: 0, capped: false, discarded: true, orphanedPhotoKey: stopped.photoKey },
     };
   }
 
-  const updated = await db
-    .update(studySessions)
-    .set({ endedAt, minutes: result.minutes })
-    .where(running)
-    .returning({ id: studySessions.id });
-  if (updated.length === 0) return notFound;
   return {
     ok: true,
-    data: { minutes: result.minutes, capped: result.capped, discarded: false, orphanedPhotoKey: null },
+    data: {
+      minutes,
+      capped: stopped.rawMinutes > MAX_SESSION_MINUTES,
+      discarded: false,
+      orphanedPhotoKey: null,
+    },
   };
 }
 
