@@ -344,7 +344,7 @@ Each task is small and has an acceptance check. "Checks pass" means `npm run lin
   - Note: `app/groups/[groupId]/page.tsx` (Suspense, `connection()`, `requireMember`, `getFeed`) renders the client `components/feed.tsx` (cards, `useOptimistic` reactions via `toggleReaction`, "Load more" via `loadMoreFeed` with de-duplication and an inline error). Relative time is the pure `lib/time-ago.ts` (tests in `tests/time-ago.test.ts`). Photos use a plain `<img loading="lazy">` and hide themselves on error. Not checked visually in a browser.
 - [x] **F8 [frontend] Leaderboard screen.** Week/all segmented control via `?range=`, with my row highlighted. *Depends:* B14, F4.
   - Note: `app/groups/[groupId]/leaderboard/page.tsx` (Suspense, `connection()`, `requireMember`, `getLeaderboard`; any `?range=` other than `all` means week) renders `components/leaderboard.tsx` (`RangeToggle` as links with `aria-current`, `LeaderboardList` with my row in cheese yellow and "(you)"). If every member has 0 points it shows a "No points yet" empty state instead of the list. Not checked visually in a browser.
-- [ ] **F9 [frontend] Me screen.** Display name edit, stats, recent sessions, sign out, and the iOS install tip. *Depends:* B9, B15.
+- [x] **F9 [frontend] Me screen.** Display name edit, stats, recent sessions, sign out, and the iOS install tip. *Depends:* B9, B15. Built `app/me/page.tsx` (Suspense, request-time data) with name form, stats, last 20 sessions, sign out and iOS tip.
 
 ### Day 4: PWA, hardening, ship
 
@@ -382,4 +382,5 @@ Each task is small and has an acceptance check. "Checks pass" means `npm run lin
 - F11: add `not-found.tsx` / `error.tsx` for group routes (non-members get a 200 with the not-found UI; no data leaks). F7: check the "See feed" link in `components/study-timer.tsx`.
 - `lib/auth/server.ts` `safeNextPath` should match `resolveNextPath` (control characters).
 - `stopSession` UPDATE then DELETE (under 1 minute) is two statements; add `minutes > 0` to feed/leaderboard filters (B14) or use a transaction.
+- F9 backend note: `/me` has no query for the saved display name, so the form prefills from `displayNameFor(sessionUser)` (Neon Auth name or email prefix) and shows that again after a reload. Add `getMyProfile(userId)` in `lib/queries` returning `profiles.displayName`, then use it in `app/me/page.tsx`.
 - B16 grep test should enforce `ctx: GroupCtx` / `userId` on `lib/queries` exports.
