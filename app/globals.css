@@ -2,6 +2,7 @@
 
 /* StudyRats: ink-blue notebook, cheese-yellow highlights. */
 :root {
+  color-scheme: light dark;
   --background: #f3f5f8;
   --foreground: #12203a;
   --muted: #4b5a74;

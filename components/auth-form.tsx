@@ -96,7 +96,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
   return (
     <main className="flex flex-1 flex-col px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
-      <Link href="/" className="font-display text-xl font-bold tracking-tight">
+      <Link href="/" className="inline-flex min-h-11 items-center self-start font-display text-xl font-bold tracking-tight">
         StudyRats
       </Link>
 
