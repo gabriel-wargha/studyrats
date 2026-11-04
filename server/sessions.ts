@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { studySessions } from "@/lib/db/schema";
 import { computeMinutes } from "@/lib/points";
+import { deleteObjectQuietly } from "@/lib/storage";
 import type { ServerResult } from "@/server/groups";
 
 export const subjectSchema = z
@@ -114,6 +115,7 @@ export async function stopSession(userId: string, id: unknown): Promise<ServerRe
       .where(running)
       .returning({ photoKey: studySessions.photoKey });
     if (deleted.length === 0) return notFound;
+    await deleteObjectQuietly(deleted[0].photoKey); // best effort, never throws
     return {
       ok: true,
       data: { minutes: 0, capped: false, discarded: true, orphanedPhotoKey: deleted[0].photoKey },

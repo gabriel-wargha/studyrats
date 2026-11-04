@@ -42,6 +42,8 @@ const db = {
   },
 };
 vi.mock("@/lib/db", () => ({ getDb: () => db }));
+const deleteObjectQuietly = vi.hoisted(() => vi.fn<(key: string | null) => Promise<void>>(async () => {}));
+vi.mock("@/lib/storage", () => ({ deleteObjectQuietly }));
 
 import {
   getMyRecentSubjects,
@@ -61,6 +63,7 @@ beforeEach(() => {
     updateRows: [],
   });
   Object.values(calls).forEach((f) => f.mockClear());
+  deleteObjectQuietly.mockClear();
 });
 
 describe("startSession", () => {
@@ -111,6 +114,14 @@ describe("stopSession", () => {
       data: { minutes: 0, capped: false, discarded: true, orphanedPhotoKey: "u1/abc.jpg" },
     });
     expect(calls.update).not.toHaveBeenCalled();
+    expect(deleteObjectQuietly).toHaveBeenCalledWith("u1/abc.jpg");
+  });
+
+  it("does not delete any photo for a normal stop", async () => {
+    state.selectRows = [{ startedAt: minutesAgo(5) }];
+    state.updateRows = [{ id: ID }];
+    await stopSession("u1", ID);
+    expect(deleteObjectQuietly).not.toHaveBeenCalled();
   });
 
   it("saves whole minutes", async () => {
