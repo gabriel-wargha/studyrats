@@ -66,6 +66,7 @@ describe("getFeed", () => {
     expect(res).toEqual({ items: [], nextCursor: null });
     const where = dialect.sqlToQuery(whereArgs[0] as never);
     expect(where.sql).toContain(">=");
+    expect(where.sql).toContain('"study_sessions"."minutes" > $');
     const membershipJoin = dialect.sqlToQuery(joinMock.mock.calls[0][1] as never);
     expect(membershipJoin.params).toContain(GID);
   });

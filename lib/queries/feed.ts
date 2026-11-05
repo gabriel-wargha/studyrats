@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { GroupCtx } from "@/lib/authz";
 import { getDb } from "@/lib/db";
@@ -90,6 +90,7 @@ export async function getFeed(ctx: GroupCtx, cursor?: string): Promise<FeedPage>
     .where(
       and(
         isNotNull(studySessions.endedAt),
+        gt(studySessions.minutes, 0),
         sql`${studySessions.endedAt} >= ${memberships.joinedAt}`,
         after
           ? sql`(${studySessions.endedAt}, ${studySessions.id}) < (${after.endedAt}::timestamptz, ${after.id}::uuid)`
