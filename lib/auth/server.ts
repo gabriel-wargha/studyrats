@@ -1,5 +1,6 @@
 import { createNeonAuth } from "@neon/auth/next/server";
 import { redirect } from "next/navigation";
+import { resolveNextPath } from "@/lib/auth/next-path";
 import { requireEnv } from "@/lib/env";
 
 export type SessionUser = { id: string; email: string; name: string };
@@ -27,10 +28,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
 /** Only same-site paths are allowed as a post-login target. */
 export function safeNextPath(next: string | null | undefined): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) {
-    return "/";
-  }
-  return next;
+  return resolveNextPath(next, "/");
 }
 
 /** Returns the signed-in user, or redirects to /sign-in?next=<returnPath>. */

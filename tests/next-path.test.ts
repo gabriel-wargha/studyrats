@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_AFTER_AUTH, resolveNextPath, withNext } from "@/lib/auth/next-path";
 
 describe("resolveNextPath", () => {
@@ -32,6 +32,22 @@ describe("resolveNextPath", () => {
 
   it("uses a custom fallback", () => {
     expect(resolveNextPath("//x.com", "/")).toBe("/");
+  });
+});
+
+vi.mock("@neon/auth/next/server", () => ({ createNeonAuth: vi.fn() }));
+vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
+
+describe("safeNextPath", () => {
+  it("keeps safe paths and falls back to / otherwise", async () => {
+    const { safeNextPath } = await import("@/lib/auth/server");
+    expect(safeNextPath("/join/ABC?x=1")).toBe("/join/ABC?x=1");
+    expect(safeNextPath(null)).toBe("/");
+    expect(safeNextPath("//evil.com")).toBe("/");
+    expect(safeNextPath("/\\evil.com")).toBe("/");
+    expect(safeNextPath("/\t/evil.com")).toBe("/");
+    expect(safeNextPath("/a\u0000b")).toBe("/");
+    expect(safeNextPath("/a\u007fb")).toBe("/");
   });
 });
 
